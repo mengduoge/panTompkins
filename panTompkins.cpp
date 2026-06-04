@@ -150,21 +150,11 @@
  *-------------------------------------------------------------------------------*
  */
 
-#define WINDOWSIZE 20   // Integrator window size, in samples. The article recommends 150ms. So, FS*0.15.
-						// However, you should check empirically if the waveform looks ok.
-#define NOSAMPLE -32000 // An indicator that there are no more samples to read. Use an impossible value for a sample.
-#define FS 360          // Sampling frequency.
-                        // typically could be around 1 second.
-
-#define DELAY 22		// Delay introduced by the filters. Filter only output samples after this one.
-						// Set to 0 if you want to keep the delay. Fixing the delay results in DELAY less samples
-						// in the final end result.
-
 #include "panTompkins.h"
-#include <stdio.h>      // Remove if not using the standard file functions.
 
-
+#ifdef WIN32
 FILE *fin, *fout;       // Remove them if not using files and <stdio.h>.
+#endif
 
 static struct {
 	dataType signal[BUFFSIZE], dcblock[BUFFSIZE], lowpass[BUFFSIZE], highpass[BUFFSIZE];
@@ -182,9 +172,9 @@ static struct {
 static bool panTompkinsGetOutput(bool qrs)
 {
 	pt.outputSignal[pt.current] = qrs;
-	if (pt.sample > DELAY + BUFFSIZE)
-		return pt.outputSignal[0];
-	return false;
+	//if (pt.sample > DELAY + BUFFSIZE)
+		//return pt.outputSignal[0];
+	return qrs;
 }
 
 void panTompkinsReset(void)
@@ -220,6 +210,7 @@ void panTompkinsReset(void)
 	pt.flushIndex = 0;
 }
 
+#ifdef WIN32
 bool panTompkinsFlush(void)
 {
 	pt.flushIndex++;
@@ -227,6 +218,7 @@ bool panTompkinsFlush(void)
 		return pt.outputSignal[pt.flushIndex];
 	return false;
 }
+#endif
 
 /*
     Use this function for any kind of setup you need before getting samples.
@@ -234,13 +226,16 @@ bool panTompkinsFlush(void)
     a serial connection.
     Remember to update its parameters on the panTompkins.h file as well.
 */
-void init(const char file_in[], const char file_out[])
+void panTompkinsInit(const char file_in[], const char file_out[])
 {
+#ifdef WIN32
 	fin = fopen(file_in, "r");
 	fout = fopen(file_out, "w+");
+#endif
 	panTompkinsReset();
 }
 
+#ifdef WIN32
 /*
     Use this function to read and return the next sample (from file, serial,
     A/D converter etc) and put it in a suitable, numeric format. Return the
@@ -255,6 +250,7 @@ dataType input()
 	return num;
 }
 
+
 /*
     Use this function to output the information you see fit (last RR-interval,
     sample index which triggered a peak detection, whether each sample was a R
@@ -267,6 +263,7 @@ void output(int out)
 {
 	fprintf(fout, "%d\n", out);
 }
+#endif
 
 /*
     Processes one AD sample and returns whether an R peak was detected for the
@@ -545,9 +542,9 @@ bool panTompkins(dataType sampleValue)
 			{
 				pt.outputSignal[pt.current] = false;
 				pt.outputSignal[i] = true;
-				if (pt.sample > DELAY + BUFFSIZE)
-					return pt.outputSignal[0];
-				return false;
+				//if (pt.sample > DELAY + BUFFSIZE)
+				//	return pt.outputSignal[0];
+				//return false;
 			}
 		}
 
@@ -568,4 +565,48 @@ bool panTompkins(dataType sampleValue)
 	}
 
 	return panTompkinsGetOutput(qrs);
+}
+
+int panTompkinsGetHR(void)
+{
+	int rrMax = 0;
+	int rrMin = 0;
+	int rrSum = 0;
+	int rrValidCnt = 0;
+	int rrInvalidCnt = 0;
+
+	for(int i=0; i<8; i++)
+	{
+		if(pt.rr1[i] < (FS/6))	// 剔除过快的心率，正常人心率不应该超过每分钟360次
+		{
+			rrInvalidCnt++;
+			continue;
+		}
+
+		if(pt.rr1[i] > rrMax)
+			rrMax = pt.rr1[i];
+
+		if(pt.rr1[i] < rrMin)
+			rrMin = pt.rr1[i];
+			
+		rrSum += pt.rr1[i];
+	}
+
+	rrSum -= rrMax;
+	rrSum -= rrMin;
+
+	rrValidCnt = 8 - rrInvalidCnt - 2;	// 剔除过快的心率和最大最小值后的有效RR间期数量
+	if (rrValidCnt == 0)
+	{
+		return 0;
+	}
+	
+	rrSum /= rrValidCnt;
+
+	rrSum *= (1000 / FS);
+
+	if(rrSum == 0)
+		return 0;
+
+	return (int)(60000 / rrSum);
 }

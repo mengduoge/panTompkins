@@ -33,14 +33,34 @@
 #ifndef PAN_TOMPKINS
 #define PAN_TOMPKINS
 
+#include <stdio.h>      // Remove if not using the standard file functions.
+#include <stdbool.h>
+
 typedef int dataType;
-typedef enum {false, true} bool;
+//typedef enum {false, true} bool;
 
-#define BUFFSIZE 600
+#define WINDOWSIZE 20   // Integrator window size, in samples. The article recommends 150ms. So, FS*0.15.
+// However, you should check empirically if the waveform looks ok.
 
-bool panTompkins(dataType sampleValue);
+#define NOSAMPLE -32000 // An indicator that there are no more samples to read. Use an impossible value for a sample.
+
+#define FS 250          // Sampling frequency.
+
+#define DELAY 0		// Delay introduced by the filters. Filter only output samples after this one.
+						// Set to 0 if you want to keep the delay. Fixing the delay results in DELAY less samples
+						// in the final end result.
+
+#define BUFFSIZE 415    // The size of the buffers (in samples). Must fit more than 1.66 times an RR interval, which
+						// typically could be around 1 second.
+
+
+void panTompkinsInit(const char file_in[] = NULL, const char file_out[] = NULL);
 void panTompkinsReset(void);
+bool panTompkins(dataType sampleValue);
+int panTompkinsGetHR(void);
+
+#ifdef WIN32
 bool panTompkinsFlush(void);
-void init(const char file_in[], const char file_out[]);
+#endif
 
 #endif
