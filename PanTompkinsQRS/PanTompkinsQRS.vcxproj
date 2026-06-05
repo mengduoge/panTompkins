@@ -129,8 +129,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\examples\main.c" />
-    <ClCompile Include="..\panTompkins.c" />
+    <ClCompile Include="..\examples\main.cpp" />
+    <ClCompile Include="..\panTompkins.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
