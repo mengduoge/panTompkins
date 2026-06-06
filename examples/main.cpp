@@ -10,7 +10,7 @@ int main()
 	dataType sample;
 	int i;
 
-	panTompkinsInit("..\\examples\\my.csv", "..\\examples\\test_output.csv");
+	panTompkinsInit("..\\examples\\HighTWave.csv", "..\\examples\\test_output.csv");
 
 	while ((sample = input()) != NOSAMPLE)
 		output(panTompkins(sample));

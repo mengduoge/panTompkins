@@ -151,6 +151,7 @@
  */
 
 #include "panTompkins.h"
+#include <math.h>       // Remove if not using the sqrt() function.
 
 #ifdef WIN32
 FILE *fin, *fout;       // Remove them if not using files and <stdio.h>.
@@ -430,7 +431,7 @@ bool panTompkins(dataType sampleValue)
 		pt.rravg1 += pt.rr1[7];
 		pt.rravg1 *= 0.125;
 
-		if ((pt.rr1[7] >= pt.rrlow) && (pt.rr1[7] <= pt.rrhigh))
+		//if ((pt.rr1[7] >= pt.rrlow) && (pt.rr1[7] <= pt.rrhigh))
 		{
 			pt.rravg2 = 0;
 			for (i = 0; i < 7; i++)
@@ -502,7 +503,7 @@ bool panTompkins(dataType sampleValue)
 						pt.rravg1 += pt.rr1[7];
 						pt.rravg1 *= 0.125;
 
-						if ((pt.rr1[7] >= pt.rrlow) && (pt.rr1[7] <= pt.rrhigh))
+						//if ((pt.rr1[7] >= pt.rrlow) && (pt.rr1[7] <= pt.rrhigh))
 						{
 							pt.rravg2 = 0;
 							for (j = 0; j < 7; j++)
@@ -567,6 +568,26 @@ bool panTompkins(dataType sampleValue)
 	return panTompkinsGetOutput(qrs);
 }
 
+static int MeanSquaredErrorPercentage(int* data, int len)
+{
+	if (data == nullptr || len <= 0)
+		return -1;
+
+	long long sum = 0;
+	long long sumSq = 0;
+
+	for (int i = 0; i < len; ++i)
+	{
+		sum += data[i];
+		sumSq += (long long)data[i] * data[i];
+	}
+
+	double mean = (double)sum / len;
+	double mse = (double)sumSq / len - mean * mean;
+
+	return (int)((sqrt(mse)*100) / mean);
+}
+
 int panTompkinsGetHR(void)
 {
 	int rrMax = 0;
@@ -574,6 +595,19 @@ int panTompkinsGetHR(void)
 	int rrSum = 0;
 	int rrValidCnt = 0;
 	int rrInvalidCnt = 0;
+
+	for (int i = 0; i < 8; i++)
+	{
+		if (pt.rr1[i] <= 0)
+		{
+			return -1;		// 还没存够8个RR间期，无法计算心率
+		}
+	}
+
+	if (10 <= MeanSquaredErrorPercentage(pt.rr1, 8))
+	{
+		return -1; // RR间期的均方误差过大，说明心率不稳定，无法计算心率
+	}
 
 	for(int i=0; i<8; i++)
 	{
@@ -598,7 +632,7 @@ int panTompkinsGetHR(void)
 	rrValidCnt = 8 - rrInvalidCnt - 2;	// 剔除过快的心率和最大最小值后的有效RR间期数量
 	if (rrValidCnt == 0)
 	{
-		return 0;
+		return -1;
 	}
 	
 	rrSum /= rrValidCnt;
@@ -606,7 +640,7 @@ int panTompkinsGetHR(void)
 	rrSum *= (1000 / FS);
 
 	if(rrSum == 0)
-		return 0;
+		return -1;
 
 	return (int)(60000 / rrSum);
 }

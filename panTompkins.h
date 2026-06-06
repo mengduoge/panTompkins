@@ -39,7 +39,7 @@
 typedef int dataType;
 //typedef enum {false, true} bool;
 
-#define WINDOWSIZE 20   // Integrator window size, in samples. The article recommends 150ms. So, FS*0.15.
+#define WINDOWSIZE 10   // Integrator window size, in samples. The article recommends 150ms. So, FS*0.15.
 // However, you should check empirically if the waveform looks ok.
 
 #define NOSAMPLE -32000 // An indicator that there are no more samples to read. Use an impossible value for a sample.
